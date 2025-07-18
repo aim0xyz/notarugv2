@@ -635,7 +635,7 @@
         </div>
         <div class="header-actions">
           <div class="balance-display">
-            Balance: \$<span id="bal-header">100.00</span>
+            Balance: $<span id="bal-header">100.00</span>
           </div>
           <button class="connect-btn" id="connect-wallet-btn">Connect</button>
           <div class="profile-dropdown" id="profile-dropdown">
@@ -687,7 +687,7 @@
         <div class="controls">
           <div class="row">
             <div class="input-wrap">
-              <label for="bet">Bet Amount (\$)</label>
+              <label for="bet">Bet Amount ($)</label>
               <input id="bet" type="text" value="1.00" />
             </div>
             <div class="input-wrap">
@@ -820,7 +820,7 @@
           }
         };
   
-        // API calls for Node.js serverless functions on Vercel
+        // API calls
         const api = {
           async createUser(userData) {
             const response = await fetch("/api/user", {
@@ -923,7 +923,7 @@
         // Updated proven result function with modified odds:
         //  • ~50% chance of falling between 1.01x and 3.00x
         //  • ~30% chance for 3.00x to 10x
-        //  • ~10% chance for 10x-20x (more common than above 20x)
+        //  • ~10% chance for 10x-20x (more common than above 20)
         //  • ~5% chance for 20x-100x
         //  • ~3% chance for 100x-1000x
         //  • ~1.5% chance for 1000x-10000x
@@ -951,25 +951,18 @@
           const r = (randomValue + additionalEntropy) % 1.0;
   
           if (r < 0.50) {
-            // 50% chance for 1.01x to 3.00x
             return +(1.01 + (r / 0.50) * (3.00 - 1.01)).toFixed(2);
           } else if (r < 0.80) {
-            // 30% chance for 3.00x to 10x
             return +(3.00 + ((r - 0.50) / 0.30) * (10.00 - 3.00)).toFixed(2);
           } else if (r < 0.90) {
-            // 10% chance for 10x to 20x (more common than above 20)
             return +(10.00 + ((r - 0.80) / 0.10) * (20.00 - 10.00)).toFixed(2);
           } else if (r < 0.95) {
-            // 5% chance for 20x to 100x
             return +(20.00 + ((r - 0.90) / 0.05) * (100.00 - 20.00)).toFixed(2);
           } else if (r < 0.98) {
-            // 3% chance for 100x to 1000x
             return +(100.00 + ((r - 0.95) / 0.03) * (1000.00 - 100.00)).toFixed(2);
           } else if (r < 0.995) {
-            // 1.5% chance for 1000x to 10000x
             return +(1000.00 + ((r - 0.98) / 0.015) * (10000.00 - 1000.00)).toFixed(2);
           } else {
-            // Remaining falls exactly on 10000x
             return 10000.0;
           }
         }
@@ -980,7 +973,6 @@
           setState("betting");
   
           try {
-            // Get a new round from the backend (with a new server seed)
             const roundData = await api.startRound();
             currentRoundId = roundData.round_id;
             serverSeedHash = roundData.server_seed_hash;
@@ -1116,7 +1108,6 @@
             }
   
             pastOutcomes.unshift(res);
-            // Keep only last 10 outcomes
             if (pastOutcomes.length > 10) pastOutcomes = pastOutcomes.slice(0, 10);
   
             updateOutcomesDisplay();
@@ -1146,7 +1137,7 @@
           recentBets.forEach((bet) => {
             const btn = document.createElement("button");
             btn.className = "recent-bet-btn";
-            btn.textContent = `\$${bet.bet_amount.toFixed(2)} @ ${bet.target_multiplier.toFixed(2)}x`;
+            btn.textContent = `$${bet.bet_amount.toFixed(2)} @ ${bet.target_multiplier.toFixed(2)}x`;
             btn.onclick = () => executeBet(bet.bet_amount, bet.target_multiplier);
             ui.recentBetsContainer.appendChild(btn);
           });
@@ -1195,7 +1186,7 @@
             updateBalance();
   
             let li = document.createElement("li");
-            li.innerHTML = `<span>${playerUsername} - \$${amount.toFixed(2)} @ ${target.toFixed(2)}×</span><span class="bet-outcome">Pending</span>`;
+            li.innerHTML = `<span>${playerUsername} - $${amount.toFixed(2)} @ ${target.toFixed(2)}×</span><span class="bet-outcome">Pending</span>`;
             ui.myBetsList.prepend(li);
             myBetsThisRound.push({ 
               betAmount: amount, 
@@ -1278,49 +1269,11 @@
           }
         }
   
+        // Updated connectSolanaWallet function that always forces test simulation.
         async function connectSolanaWallet() {
           try {
-            // Force test wallet simulation if Phantom is not available.
-            if (!window.solana || !window.solana.isPhantom) {
-              console.warn("Phantom wallet not detected; using test simulation.");
-              return simulateWalletConnection();
-            }
-  
-            const response = await window.solana.connect();
-            const publicKey = response.publicKey.toString();
-            const message = `Verify wallet ownership for NotaRug Roulette\nTimestamp: ${Date.now()}`;
-            const encodedMessage = new TextEncoder().encode(message);
-            const signedMessage = await window.solana.signMessage(encodedMessage, "utf8");
-  
-            const verificationResponse = await fetch("/api/wallet/verify", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                publicKey: publicKey,
-                message: message,
-                signature: Array.from(signedMessage.signature)
-              })
-            });
-  
-            if (!verificationResponse.ok) {
-              throw new Error("Wallet verification failed");
-            }
-  
-            await updateUserProfile(playerUsername, profilePicDataUrl, publicKey);
-            isConnected = true;
-            connectedWalletAddress = publicKey;
-  
-            ui.connectBtn.textContent = "Wallet Connected";
-            ui.connectBtn.disabled = true;
-            ui.connectBtn.style.backgroundColor = "#10b981";
-            ui.profileDropdownButton.disabled = false;
-            ui.profileDropdown.style.display = "inline-block";
-            updateWalletDisplay(publicKey);
-            setState(roundState);
-            updateBetButtonState();
-            updateClaimButtonState();
-  
-            console.log("Wallet connected and verified:", publicKey);
+            console.warn("Forcing test wallet simulation.");
+            return simulateWalletConnection();
           } catch (error) {
             console.error("Failed to connect wallet:", error);
             alert("Failed to connect wallet. Please try again.");
@@ -1422,7 +1375,7 @@
               updateBalance();
               updateClaimButtonState();
   
-              alert(`Daily balance claimed! +\$${result.claimed_amount}`);
+              alert(`Daily balance claimed! +$${result.claimed_amount}`);
             } else {
               alert(result.error || "Failed to claim daily balance");
             }
@@ -1494,7 +1447,7 @@
             } else {
               balance = result.new_balance;
               updateBalance();
-              alert(`You have claimed \$${DAILY_CLAIM_AMOUNT.toFixed(2)}. Enjoy!`);
+              alert(`You have claimed $${DAILY_CLAIM_AMOUNT.toFixed(2)}. Enjoy!`);
             }
           } catch (error) {
             console.error("Error claiming daily bonus:", error);
