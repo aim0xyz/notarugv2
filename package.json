@@ -1,0 +1,10 @@
+{
+"name": "notarug-roulette",
+"version": "1.0.0",
+"scripts": {
+"start": "serve ."
+},
+"dependencies": {
+"serve": "^14.0.1"
+}
+}
